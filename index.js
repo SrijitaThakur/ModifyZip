@@ -4,7 +4,10 @@ const JSZip = require('jszip');
 
 async function performReplacementsInDirectory(inputDirectory, outputDirectory, domain) {
   try {
+    // Read the input directory
     const files = fs.readdirSync(inputDirectory);
+
+    // Ensure the output directory exists
     if (!fs.existsSync(outputDirectory)) {
       fs.mkdirSync(outputDirectory);
     }
@@ -52,12 +55,16 @@ async function processZipFile(inputFilePath, outputFilePath, domain) {
       Object.keys(zip.files).map(async (filePath) => {
         const file = zip.files[filePath];
         if (!file.dir) {
-          let content = await file.async('text');
-        
-          content = content.replace(new RegExp(searchStringForBlank, 'g'), '_top');
-          content = replaceHelperForTarget(content, domain);
-
-          updatedZip.file(filePath, content);
+          if (file.name.endsWith('.js')) {
+            // For JavaScript files, apply the desired replacements
+            let content = await file.async('text');
+            content = content.replace(new RegExp(searchStringForBlank, 'g'), '_top');
+            content = replaceHelperForTarget(content, domain);
+            updatedZip.file(filePath, content);
+          } else {
+            // For other files, just copy them without modification
+            updatedZip.file(filePath, await file.async('nodebuffer'));
+          }
         } else {
           updatedZip.folder(filePath);
         }
@@ -75,6 +82,8 @@ async function processZipFile(inputFilePath, outputFilePath, domain) {
     console.error(`An error occurred while processing ${inputFilePath}:`, error);
   }
 }
+
+// Command-line arguments
 const [nodePath, scriptPath, inputDirectory, outputDirectory, domain] = process.argv;
 
 // Check if all required arguments are provided
